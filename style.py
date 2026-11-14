@@ -70,9 +70,8 @@ def esc(s) -> str:
     return html.escape(str(s))
 
 
-def brand() -> str:
-    return ('<div class="wc-brand"><b>WILDFIRE<span>/</span>CALENDAR</b>'
-            '<i>When does this land burn, and is this year normal?</i></div>')
+def brand(tagline: str) -> str:
+    return f'<div class="wc-brand"><b>WILDFIRE<span>/</span>CALENDAR</b><i>{esc(tagline)}</i></div>'
 
 
 def orbit(start=2000, end=2026) -> str:

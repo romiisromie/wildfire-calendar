@@ -56,13 +56,27 @@ def get(url: str, dest: Path, tries: int = 8) -> str:
     return f"ok {dest.name} {dest.stat().st_size / 1e6:.1f} MB"
 
 
-def main(country: str) -> None:
+def exists(country: str) -> bool:
+    """Is there a FIRMS archive under this exact name? (e.g. 'United_States', 'Brazil')"""
+    try:
+        r = requests.get(f"{BASE}/modis/2020/modis_2020_{country}.csv", headers={"Range": "bytes=0-50"}, timeout=60)
+        return r.status_code in (200, 206)
+    except requests.RequestException:
+        return False
+
+
+def main(country: str, build: bool = False) -> None:
     RAW.mkdir(parents=True, exist_ok=True)
+    todo = list(jobs(country))
     with ThreadPoolExecutor(6) as pool:
-        for msg in pool.map(lambda j: get(*j), jobs(country)):
-            print(msg, flush=True)
+        for i, msg in enumerate(pool.map(lambda j: get(*j), todo), 1):
+            print(f"[{i}/{len(todo)}] {msg}", flush=True)
     print("DONE", country, flush=True)
+    if build:
+        import data
+        data.build(country)
+        print("BUILT", country, flush=True)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], build="--build" in sys.argv)

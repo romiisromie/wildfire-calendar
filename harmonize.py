@@ -108,12 +108,13 @@ def validate(dly: pd.DataFrame) -> dict:
 
 def trust(v: dict, measure: str = "cells") -> tuple[str, str]:
     """Plain-language trust label for comparing pre-2012 (MODIS-based) and recent (VIIRS) years."""
+    """Returns (level, explanation template); the template takes {e} = held-out error in %."""
     small = {"cells": 300, "count": 500, "frp": 5000}[measure]
     if v["years"] < 5 or v["total"] < small:
         return "Insufficient", "Too little fire in 2013–2025 to test the conversion here. Seasons are still valid."
     e = v["err"]
     if e < 20:
-        return "High", f"Old and new years are comparable (held-out error {e:.0f}%)."
+        return "High", "Old and new years are comparable (held-out error {e}%)."
     if e < 40:
-        return "Medium", f"Seasons and big changes are reliable; small year-to-year differences are not ({e:.0f}%)."
-    return "Low", f"Use for timing, not for amounts across 2012 ({e:.0f}% error)."
+        return "Medium", "Seasons and big changes are reliable; small year-to-year differences are not ({e}%)."
+    return "Low", "Use for timing, not for amounts across 2012 ({e}% error)."
