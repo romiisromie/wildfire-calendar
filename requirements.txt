@@ -6,3 +6,4 @@ requests>=2.31
 pyarrow>=15
 folium>=0.17
 streamlit-folium>=0.22
+scipy>=1.13
