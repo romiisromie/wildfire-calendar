@@ -1,6 +1,6 @@
 data/raw/
 __pycache__/
 *.part
-data/store/
 data/nrt/
 data/weather/
+data/logs/

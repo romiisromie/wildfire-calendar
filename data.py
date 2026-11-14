@@ -48,10 +48,12 @@ def build(country: str) -> Path:
     df = pd.concat([_read(f) for f in files], ignore_index=True)
     df["sensor"] = df["sensor"].astype("category")
     df["sat"] = df["sat"].astype("category")
-    df = df.sort_values(["lat", "lon"], ignore_index=True)  # row groups become spatially compact
     STORE.mkdir(parents=True, exist_ok=True)
     out = STORE / f"{country}.parquet"
-    df.to_parquet(out, row_group_size=200_000, index=False)
+    # Keep only what the app uses (confident vegetation fires): ~25% smaller, small enough to ship in git.
+    keep = df[df.good & (df.type == 0)].sort_values(["lat", "lon"], ignore_index=True)  # spatially compact row groups
+    keep["date"] = keep["date"].astype("datetime64[s]")
+    keep.to_parquet(out, row_group_size=200_000, index=False, compression="zstd", compression_level=19)
     # A VIIRS gap = a day with no VIIRS detection anywhere in the country while MODIS still saw fires there
     # (instrument / processing outage, not a quiet day). Those days are filled from MODIS later.
     v = df.loc[df.sensor == "VIIRS", "date"]
@@ -61,7 +63,7 @@ def build(country: str) -> Path:
             "bbox": [float(df.lon.min()), float(df.lat.min()), float(df.lon.max()), float(df.lat.max())],
             "viirs_gaps": [str(d.date()) for d in gaps]}
     (STORE / f"{country}.json").write_text(json.dumps(meta))
-    print(f"{country}: {len(df):,} detections -> {out.name} ({out.stat().st_size / 1e6:.1f} MB), "
+    print(f"{country}: {len(df):,} detections, {len(keep):,} kept -> {out.name} ({out.stat().st_size / 1e6:.1f} MB), "
           f"VIIRS gap days: {len(gaps)}")
     return out
 

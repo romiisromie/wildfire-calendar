@@ -10,6 +10,10 @@ Draw any area and get one 25-year fire record (2000–2025) built from two NASA 
 - **Fire seasons and anomalies**: weeks far above normal, plus a check against fires reported in the news.
 - **Harmonization**: a monthly VIIRS/MODIS factor learned for *this* area, tested by leaving one year out at a time. The result is a plain-language trust label (High / Medium / Low / Insufficient).
 - **CSV download** of the calendar, the daily series and the raw hotspots.
+- **Last 7 days**: today's fires (VIIRS on NOAA-20, near-real-time, no key) against the normal for these dates.
+- **Climate & season shift**: is the fire season starting earlier (Theil–Sen trend, cross-checked on MODIS alone), and how much more fire follows hot-dry-windy days (NASA POWER weather).
+- **Any country**: type a FIRMS country name in the sidebar and the app downloads and builds its 2000–2025 record.
+- **English / Español / Русский** interface (`?lang=ES`).
 
 ## Run
 
@@ -31,7 +35,10 @@ streamlit run app.py
 
 ## Data
 
-- **NASA FIRMS**: MODIS Collection 6.1 (MCD14ML) and VIIRS S-NPP 375 m (VNP14IMGTDL), yearly country archives.
+- **NASA FIRMS**: MODIS Collection 6.1 (MCD14ML) and VIIRS S-NPP 375 m (VNP14IMGTDL), yearly country archives; VIIRS NOAA-20 7-day near-real-time file.
+- **NASA POWER**: daily maximum temperature, humidity, wind and precipitation (MERRA-2).
+
+Kazakhstan and Argentina are included in `data/store/` so the app runs without downloading.
 
 ## Use of AI
 
