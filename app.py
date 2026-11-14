@@ -15,8 +15,10 @@ import streamlit as st
 from folium.plugins import Draw, HeatMap
 from streamlit_folium import st_folium
 
+import climate as C
 import data
 import harmonize as H
+import nrt
 import seasons as S
 import style as U
 
@@ -122,6 +124,40 @@ def analyse(country, bbox, ring, measure):
     return df, dly, f, H.harmonized(dly, f), H.validate(dly)
 
 
+@st.cache_data(show_spinner="Fetching the last 7 days from NASA FIRMS…", ttl=3 * 3600)
+def last_week(bbox, ring, measure):
+    d, when = nrt.last7(bbox)
+    if ring and len(d):
+        d = d[data.inside(d.lon.to_numpy(), d.lat.to_numpy(), list(ring))]
+    return d.reset_index(drop=True), when
+
+
+@st.cache_data(show_spinner="Getting NASA POWER weather…", max_entries=16)
+def get_weather(lat, lon):
+    return C.weather(lat, lon)
+
+
+def recent_vs_normal(d7, act, measure):
+    """Activity in the last 7 days (NOAA-20 VIIRS) against the same calendar days in 2013–2025 (S-NPP VIIRS)."""
+    end = pd.Timestamp.today().normalize() - pd.Timedelta(days=1)
+    days = pd.date_range(end - pd.Timedelta(days=6), end)
+    x = d7.assign(sensor="VIIRS", sat="N", good=True, type=0)
+    now = H.daily(x, days[0], days[-1], measure).viirs.sum() if len(x) else 0.0
+    past = []
+    for y in range(2013, int(act.index.max().year) + 1):
+        try:
+            win = act.loc[days[0].replace(year=y):days[-1].replace(year=y)]
+        except ValueError:
+            continue
+        if len(win) == 7:
+            past.append(win.sum())
+    if len(past) < 5:
+        return None
+    past = np.array(past)
+    return {"now": float(now), "median": float(np.median(past)), "p90": float(np.quantile(past, .9)),
+            "rank": int(1 + (past > now).sum()), "n": len(past) + 1, "start": days[0], "end": days[-1]}
+
+
 res = None
 if name:
     ring_key = tuple(map(tuple, ring)) if ring else None
@@ -129,6 +165,13 @@ if name:
     if res[0].empty or res[3].sum() == 0:
         res = None
         st.warning("No fire detections in this area. Try a larger one.")
+
+d7, d7_when = (None, None)
+if res is not None:
+    try:
+        d7, d7_when = last_week(tuple(bbox), tuple(map(tuple, ring)) if ring else None, measure)
+    except Exception:  # NRT is a bonus: never break the page over it
+        d7 = None
 
 # ---------------- map + readout ----------------
 left, right = st.columns([3, 2], gap="large")
@@ -145,6 +188,10 @@ with left:
         if pts:
             HeatMap(pts, radius=6, blur=8, min_opacity=0.35,
                     gradient={0.2: "#7a2a0c", 0.5: "#e8590c", 0.8: "#ffa630", 1.0: "#fff1b8"}).add_to(fm)
+    if d7 is not None and len(d7):
+        for _, r in d7.sample(min(len(d7), 400), random_state=1).iterrows():
+            folium.CircleMarker((r.lat, r.lon), radius=3, color="#fff1b8", weight=1, fill=True, fill_color=U.FLAME,
+                                fill_opacity=0.9, tooltip=f"{r.date:%d %b}: {r.frp:.0f} MW").add_to(fm)
     if name:
         style = dict(color=U.FLAME, weight=1.5, fill=False, dash_array="5 4")
         if ring:
@@ -168,8 +215,8 @@ with left:
     if st.session_state.pop("pending_draw", False):
         st.info("Area drawn. Switch **Choose area** to **Draw** to analyse it.")
     if res is not None:
-        st.markdown(f'<div class="wc-note">Glow = VIIRS hotspots of the last three years. '
-                    f'Dashed line = analysed area.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="wc-note">Glow = VIIRS hotspots of the last three years · bright dots = fires of '
+                    'the last 7 days (NOAA-20) · dashed line = analysed area.</div>', unsafe_allow_html=True)
 
 if res is None:
     with right:
@@ -209,6 +256,14 @@ with right:
             lede.append(f"Since the 2000s, yearly fire is <em>{'down' if ch < 0 else 'up'} {abs(ch):.0f}%</em>.")
     st.markdown(f'<div class="wc-lede">{" ".join(lede)}</div>', unsafe_allow_html=True)
 
+    rv = recent_vs_normal(d7, act, measure) if d7 is not None else None
+    if rv:
+        rr = rv["now"] / rv["median"] if rv["median"] > 0 else np.nan
+        val_txt = f"{rv['now']:,.0f}" + (f"  ·  {rr:.1f}×" if np.isfinite(rr) else "")
+        st.markdown(U.readout(f"Last 7 days · {rv['start']:%d}–{rv['end']:%d %b}", val_txt,
+                              f"{unit} · normal for these days {rv['median']:,.0f} · rank {rv['rank']} of {rv['n']} "
+                              f"· updated {d7_when:%d %b %H:%M} UTC",
+                              dot=U.EMBER if rv["now"] > rv["p90"] else None), unsafe_allow_html=True)
     color, short = TRUST[level]
     st.markdown(U.readout("Old vs new years comparable?", f"{level}", f"{short} · {why}", dot=color),
                 unsafe_allow_html=True)
@@ -230,7 +285,7 @@ with right:
                           f"{(df.sensor == 'MODIS').sum():,} MODIS · {(df.sensor == 'VIIRS').sum():,} VIIRS"),
                 unsafe_allow_html=True)
 
-tabs = st.tabs(["Calendar", "This year", "Seasons & events", "Harmonization", "Download", "Method"])
+tabs = st.tabs(["Calendar", "This year", "Climate & shift", "Seasons & events", "Harmonization", "Download", "Method"])
 
 # ---------------- calendar ----------------
 with tabs[0]:
@@ -287,8 +342,86 @@ with tabs[1]:
                 f'<span style="color:#8a5a3c">■</span> within · <span style="color:{U.COOL}">■</span> below. '
                 f'“Usual” = complete years 2000–{y - 1}.</div>', unsafe_allow_html=True)
 
-# ---------------- seasons & events ----------------
+# ---------------- climate & season shift ----------------
 with tabs[2]:
+    big = [x for x in seas if x["share"] >= 10][:2]
+    if not big:
+        st.markdown('<div class="wc-note">No clear fire season here to analyse.</div>', unsafe_allow_html=True)
+    modis_only = dly.modis * fit.k.reindex(dly.index.month).to_numpy()
+    try:
+        wx = get_weather(round((bbox[1] + bbox[3]) / 2, 2), round((bbox[0] + bbox[2]) / 2, 2))
+    except Exception:
+        wx = None
+        st.warning("NASA POWER weather is unavailable right now; showing season timing only.")
+    for i, sz in enumerate(big):
+        st.markdown(U.section(f"{i + 1}", f"Season {S.season_label(sz)} · {sz['share']:.0f}% of yearly fire"),
+                    unsafe_allow_html=True)
+        rep = C.shift_report(act, modis_only, sz)
+        tm = rep["timing"]
+        if len(tm) < 8:
+            st.markdown('<div class="wc-note">Too few complete seasons.</div>', unsafe_allow_html=True)
+            continue
+        g1, g2 = st.columns([3, 2], gap="large")
+        with g1:
+            fig = go.Figure()
+            for q, col, wdt in (("end", "#8a5a3c", 1), ("middle", U.FLAME, 1.5), ("onset", U.EMBER, 2.5)):
+                fig.add_trace(go.Scatter(x=tm.index, y=tm[q], mode="lines+markers", name=q, line=dict(color=col, width=wdt),
+                                         marker=dict(size=4), customdata=[C.doy_label(rep["window_start"], v) for v in tm[q]],
+                                         hovertemplate="%{x}: %{customdata}<extra>" + q + "</extra>"))
+                tr = rep[q]
+                if np.isfinite(tr["slope"]):
+                    xs_ = np.array([tm.index.min(), tm.index.max()])
+                    mid = np.median(tm[q]) + tr["slope"] / 10 * (xs_ - np.median(tm.index))
+                    fig.add_trace(go.Scatter(x=xs_, y=mid, mode="lines", showlegend=False, hoverinfo="skip",
+                                             line=dict(color=col, dash="dot" if not tr["robust"] else "solid", width=1)))
+            ticks = np.arange(0, tm[["onset", "end"]].to_numpy().max() + 8, 14)
+            fig.update_layout(height=300, margin=dict(t=10, b=10), legend=dict(orientation="h", y=1.1, x=0),
+                              yaxis=dict(tickvals=ticks, ticktext=[C.doy_label(rep["window_start"], v) for v in ticks],
+                                         autorange="reversed", title=None))
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        with g2:
+            for q, lab in (("onset", "Season starts"), ("end", "Season ends")):
+                tr = rep[q]
+                sl = tr["slope"]
+                if not np.isfinite(sl):
+                    continue
+                if abs(sl) < 0.5 or tr["p"] >= .05:
+                    v, note = "no clear shift", f"{sl:+.1f} days/decade, p = {tr['p']:.2f}"
+                else:
+                    v = f"{abs(sl):.1f} days {'earlier' if sl < 0 else 'later'} / decade"
+                    note = (f"p = {tr['p']:.3f} · MODIS alone {tr['modis_slope']:+.1f} d/decade · "
+                            + ("✔ same on one sensor — not a 2012 artefact" if tr["robust"] else "⚠ not confirmed by MODIS alone"))
+                st.markdown(U.readout(lab, v, note, dot=U.EMBER if tr["robust"] else None), unsafe_allow_html=True)
+            if wx is not None:
+                fw = C.fire_weather(act, wx, sz)
+                if fw:
+                    def fmt(c):
+                        lo_, hi_ = fw[f"{c}_ci"]
+                        return f"{fw[c]:.2f}× normal", f"90% range {lo_:.2f}–{hi_:.2f} over {fw['years']} seasons"
+                    v, nt = fmt("hot")
+                    st.markdown(U.readout("After hot-dry-windy days", v, nt, dot=U.EMBER if fw["hot_ci"][0] > 1 else None),
+                                unsafe_allow_html=True)
+                    v, nt = fmt("calm")
+                    st.markdown(U.readout("After calm-humid days", v, nt, dot=U.COOL if fw["calm_ci"][1] < 1 else None),
+                                unsafe_allow_html=True)
+    st.markdown('<div class="wc-note">Season timing: the day by which 10% (start), 50% and 90% (end) of a season’s '
+                'fire had burned, each year. Trend = Theil–Sen slope, significance = Kendall test. Fire weather: '
+                'daily hot-dry-windy index (vapour-pressure deficit × wind, NASA POWER) compared with its normal for the '
+                'date; the next 3 days’ fire is compared with the same dates in other years. Coloured dot = the 90% range '
+                'excludes 1 (no effect).</div>', unsafe_allow_html=True)
+    if wx is not None:
+        st.markdown(U.section("↗", "Fire weather of the last 60 days"), unsafe_allow_html=True)
+        rd = C.recent_days(wx)
+        cmap = {"hot-dry-windy": U.EMBER, "normal": "#5a4a3e", "calm-humid": U.COOL}
+        fig = go.Figure(go.Bar(x=rd.index, y=rd.anom, marker_color=rd.cls.map(cmap), marker_line_width=0,
+                               customdata=rd.cls, hovertemplate="%{x|%d %b}: %{customdata}<extra></extra>"))
+        fig.update_layout(height=200, margin=dict(t=10, b=10), yaxis_title="vs normal", bargap=0.1)
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        st.markdown(f'<div class="wc-note">NASA POWER weather at the area centre, '
+                    f'up to {wx.index.max():%d %b %Y}.</div>', unsafe_allow_html=True)
+
+# ---------------- seasons & events ----------------
+with tabs[3]:
     st.markdown(U.section("A", "Fire seasons"), unsafe_allow_html=True)
     if seas:
         st.dataframe(pd.DataFrame([{"season": S.season_label(x), "peak week": S.week_label(x["peak"]),
@@ -321,7 +454,7 @@ with tabs[2]:
         st.dataframe(an.head(15).drop(columns=["year", "week"]).round(1), hide_index=True)
 
 # ---------------- harmonization ----------------
-with tabs[3]:
+with tabs[4]:
     st.markdown(U.section("1", "How wrong is MODIS × factor on years it never saw?"), unsafe_allow_html=True)
     errs = pd.DataFrame({"method": ["raw MODIS", "one factor", "monthly factor (used)"],
                          "error": [val["err_raw"], val["err_one_k"], val["err"]]})
@@ -355,7 +488,7 @@ with tabs[3]:
     st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
 # ---------------- download ----------------
-with tabs[4]:
+with tabs[5]:
     head = (f"# Wildfire Calendar export | area: {name} | country: {country} | "
             f"bbox: {tuple(round(b, 3) for b in bbox)}\n"
             f"# units: VIIRS-equivalent {unit} | sources: NASA FIRMS MODIS C6.1, VIIRS S-NPP 375m\n"
@@ -381,7 +514,7 @@ with tabs[4]:
         st.download_button("Download CSV", csv(df), "hotspots.csv", "text/csv", key="d3")
 
 # ---------------- method ----------------
-with tabs[5]:
+with tabs[6]:
     st.markdown("""
 **The problem.** MODIS (since 2000, 1 km pixels) and VIIRS (since 2012, 375 m) see fire differently. A plain count
 jumps up in 2012, and any 25-year trend becomes meaningless.
