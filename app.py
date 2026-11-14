@@ -69,6 +69,7 @@ jumps up in 2012, and any 25-year trend becomes meaningless.
 6. **Test**: predict every 2013–2025 year from MODIS alone, without that year. The error sets the trust label.
 
 Data: NASA FIRMS (MODIS C6.1 MCD14ML, VIIRS S-NPP VNP14IMGTDL; last 7 days: VIIRS NOAA-20 NRT) and NASA POWER daily weather.
+**Use of AI.** The code of this app was written with an AI coding assistant (Claude Code, Anthropic), directed and checked by the team. No images, audio or data were AI-generated: all numbers come from NASA data.
 """,
     "es": """
 **El problema.** MODIS (desde 2000, píxeles de 1 km) y VIIRS (desde 2012, 375 m) ven el fuego de forma distinta. Un conteo
@@ -83,6 +84,7 @@ simple salta en 2012 y cualquier tendencia de 25 años pierde sentido.
 6. **Prueba**: predecimos cada año 2013–2025 solo con MODIS, sin usar ese año. El error define la etiqueta de confianza.
 
 Datos: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; últimos 7 días: VIIRS NOAA-20 NRT) y clima diario NASA POWER.
+**Uso de IA.** El código de esta aplicación se escribió con un asistente de programación con IA (Claude Code, Anthropic), dirigido y revisado por el equipo. No se generaron con IA imágenes, audio ni datos: todas las cifras provienen de datos de la NASA.
 """,
     "ru": """
 **Проблема.** MODIS (с 2000 года, пиксель 1 км) и VIIRS (с 2012 года, 375 м) видят огонь по-разному. Простой подсчёт
@@ -97,6 +99,7 @@ Datos: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; últimos 7 días: VIIRS NOAA-20 NRT)
 6. **Проверка**: каждый год 2013–2025 предсказываем только по MODIS, не используя этот год. Ошибка задаёт уровень доверия.
 
 Данные: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; последние 7 дней: VIIRS NOAA-20 NRT) и суточная погода NASA POWER.
+**Использование ИИ.** Код приложения написан с помощью ИИ-ассистента для программирования (Claude Code, Anthropic) под руководством и с проверкой команды. Изображения, звук и данные ИИ не генерировал: все цифры взяты из данных NASA.
 """,
 }
 SCALES = {"Burn (dark → bright)": U.BURN, "Cividis": "cividis"}
@@ -215,8 +218,8 @@ def analyse(country, bbox, ring, measure):
     return df, dly, f, H.harmonized(dly, f), H.validate(dly)
 
 
-@st.cache_data(show_spinner="Fetching the last 7 days from NASA FIRMS…", ttl=3 * 3600)
-def last_week(bbox, ring, measure):
+@st.cache_data(show_spinner=False, max_entries=32)
+def last_week(bbox, ring, measure, stamp):
     d, when = nrt.last7(bbox)
     if ring and len(d):
         d = d[data.inside(d.lon.to_numpy(), d.lat.to_numpy(), list(ring))]
@@ -260,7 +263,9 @@ if name:
 d7, d7_when = (None, None)
 if res is not None:
     try:
-        d7, d7_when = last_week(tuple(bbox), tuple(map(tuple, ring)) if ring else None, measure)
+        stamp = nrt.stamp(tuple(bbox))
+        if stamp is not None:
+            d7, d7_when = last_week(tuple(bbox), tuple(map(tuple, ring)) if ring else None, measure, stamp)
     except Exception:  # NRT is a bonus: never break the page over it
         d7 = None
 
@@ -405,7 +410,7 @@ with tabs[0]:
     fig = go.Figure(go.Heatmap(z=zl, x=xs, y=t.index, colorscale=scale, text=hover, xgap=2, ygap=2,
                                zmin=0, zmax=top, hovertemplate="%{x} %{y}<br><b>%{text}</b> " + unit + "<extra></extra>",
                                colorbar=dict(title=dict(text=unit, side="right"), tickvals=tv, thickness=10,
-                                             ticktext=[f"{10 ** v - 1:,.0f}" if v < 3 else f"{10 ** v / 1000:,.0f}k"
+                                             ticktext=["0" if v == 0 else f"{10 ** v:,.0f}" if v < 3 else f"{10 ** v / 1000:,.0f}k"
                                                        for v in tv], outlinewidth=0)))
     if years[0] <= 2011 < years[1]:
         fig.add_hline(y=2011.5, line=dict(color=U.MUTED, width=1, dash="dot"))

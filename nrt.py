@@ -5,6 +5,7 @@ Files are cached for 3 hours.
 """
 from __future__ import annotations
 
+import threading
 import time
 from pathlib import Path
 
@@ -26,20 +27,45 @@ def region(bbox) -> str:
     return "Global"
 
 
-def _file(name: str) -> Path | None:
-    f = CACHE / f"J1_{name}_7d.csv"
-    if f.exists() and time.time() - f.stat().st_mtime < MAX_AGE:
-        return f
+_running: set[str] = set()
+_lock = threading.Lock()
+
+
+def _download(name: str, f: Path) -> None:
     try:
         r = requests.get(URL.format(name), timeout=600)
         r.raise_for_status()
         CACHE.mkdir(parents=True, exist_ok=True)
-        tmp = f.with_suffix(".tmp")
+        tmp = f.with_suffix(f".{threading.get_ident()}.tmp")
         tmp.write_bytes(r.content)
         tmp.replace(f)
-    except requests.RequestException:
+    except (requests.RequestException, OSError):
         pass  # keep using an older copy if there is one
+    finally:
+        with _lock:
+            _running.discard(name)
+
+
+def _file(name: str) -> Path | None:
+    """Never blocks the page: a missing or stale file is refreshed in a background thread."""
+    f = CACHE / f"J1_{name}_7d.csv"
+    fresh = f.exists() and time.time() - f.stat().st_mtime < MAX_AGE
+    if not fresh:
+        with _lock:
+            if name not in _running:
+                _running.add(name)
+                threading.Thread(target=_download, args=(name, f), daemon=True).start()
     return f if f.exists() else None
+
+
+def loading(bbox) -> bool:
+    return region(bbox) in _running
+
+
+def stamp(bbox) -> float | None:
+    """Modification time of the cached file for this area (a cache key); starts a refresh if needed."""
+    f = _file(region(bbox))
+    return f.stat().st_mtime if f else None
 
 
 def last7(bbox) -> tuple[pd.DataFrame, pd.Timestamp | None]:
