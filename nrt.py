@@ -68,14 +68,24 @@ def stamp(bbox) -> float | None:
     return f.stat().st_mtime if f else None
 
 
-def last7(bbox) -> tuple[pd.DataFrame, pd.Timestamp | None]:
-    """Confident VIIRS (NOAA-20) detections of the last 7 days inside bbox, plus when the file was fetched."""
+def last7(bbox) -> tuple[pd.DataFrame, pd.Timestamp | None, pd.Timestamp | None]:
+    """Confident VIIRS (NOAA-20) detections inside bbox for the last 7 COMPLETE days in the file.
+
+    The newest date in a FIRMS 7-day file is still being filled (a fraction of a normal day), so the window
+    ends the day before it. Returns (detections, when the file was fetched, last day of the window).
+    """
     f = _file(region(bbox))
     if f is None:
-        return pd.DataFrame(columns=["lat", "lon", "date", "frp"]), None
+        return pd.DataFrame(columns=["lat", "lon", "date", "frp"]), None, None
     w, s, e, n = bbox
     d = pd.read_csv(f, usecols=["latitude", "longitude", "acq_date", "confidence", "frp"])
+    if d.empty:
+        return pd.DataFrame(columns=["lat", "lon", "date", "frp"]), None, None
+    dates = pd.to_datetime(d.acq_date)
+    end = dates.max().normalize() - pd.Timedelta(days=1)
+    start = end - pd.Timedelta(days=6)
+    d = d[(dates >= start) & (dates <= end)]
     d = d[(d.longitude >= w) & (d.longitude <= e) & (d.latitude >= s) & (d.latitude <= n)]
     d = d[d.confidence.astype(str).str.lower().str[0].isin(["n", "h"])]
     out = pd.DataFrame({"lat": d.latitude, "lon": d.longitude, "date": pd.to_datetime(d.acq_date), "frp": d.frp})
-    return out.reset_index(drop=True), pd.Timestamp(f.stat().st_mtime, unit="s")
+    return out.reset_index(drop=True), pd.Timestamp(f.stat().st_mtime, unit="s"), end

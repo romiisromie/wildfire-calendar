@@ -41,15 +41,15 @@ The app then shows:
 
 1. **Calendar**: a month × year (or week × year) heatmap of harmonized fire activity, 2000–2025, in colour scales that read in greyscale and for colour-blind users.
 2. **This year vs normal**: each week of the latest year against the median year and the usual 10–90% range. A summary line says, for example, "Dec 2025 burned less than usual (0.3× the median)".
-3. **Last 7 days**: near-real-time VIIRS (NOAA-20) detections against the normal for the same calendar days.
+3. **Last 7 days**: the last 7 complete days of near-real-time VIIRS (NOAA-20) against the normal for the same calendar days. The normal comes from S-NPP; the two instruments share a design but are not cross-calibrated here.
 4. **Climate & shift**:
    - whether the fire season starts or ends earlier, using a Theil–Sen trend with a Kendall test, cross-checked on MODIS alone so the 2012 sensor change cannot create it;
-   - how much more fire follows hot-dry-windy days (NASA POWER weather).
+   - how fire in the next 3 days differs after hot-dry-windy and after calm-humid days (NASA POWER weather), each with a 90% range over the seasons.
 5. **Seasons & events**: the main fire seasons, weeks far above normal, and a check against fires reported in the news.
 6. **Harmonization**: the held-out error, the factor for each month, and VIIRS vs converted MODIS in the overlap years.
 7. **Download**: CSV of the calendar, the daily series and the hotspots, with a header that records the method and its error.
 
-Any country in the NASA FIRMS archive can be added from the app. The interface is in English, Spanish and Russian.
+The online demo ships Kazakhstan and Argentina. Any other country in the NASA FIRMS archive can be added in the open-source version (`python fetch.py Brazil --build`). The interface is in English, Spanish and Russian.
 
 **How it works.**
 
@@ -83,7 +83,12 @@ Six fires reported in the news each rank as the strongest week of 2013–2025 in
 | Arakaragai forest, Sep 2022 | 860 | 0 |
 | Las Golondrinas, Chubut, Mar 2021 | 500 | 0 |
 
-The harmonized record shows that in the Kostanay steppe the spring fire season starts 4.3 days per decade earlier. MODIS alone shows −3.6 days per decade, so this is not a sensor artefact. Yearly fire there is 66% lower in 2016–2025 than in 2001–2010.
+What the harmonized record shows:
+
+- **Decline.** Yearly fire in the Kostanay steppe is 66% lower in 2016–2025 than in the 2000s. Each sensor alone shows the same: Terra −65%, Aqua −67% (2003–2010 vs 2016–2025), and VIIRS −37% from 2013–15 to 2023–25. It is not a sensor artefact.
+- **Stable ratio.** The yearly VIIRS/MODIS ratio stays between 1.67 and 2.21 over 2013–2025, with no trend. The conversion is therefore not drifting, which supports applying it to the MODIS-only years.
+- **Fire weather.** After calm, humid days, fire in the next 3 days is 0.4–0.7× normal, with the 90% range below 1 in 9 of 11 fire seasons. The opposite effect after hot-dry-windy days is significant only in the Córdoba hills (1.6×), and we report it that way.
+- **A lead, not a claim.** The Kostanay spring season may be starting earlier (−4.3 days per decade, p = 0.03; MODIS alone −3.6). We test about 30 trends, so we treat this as a lead to check.
 
 **Benefits.**
 

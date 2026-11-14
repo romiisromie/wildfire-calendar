@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import io
 import math
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -68,7 +69,7 @@ jumps up in 2012, and any 25-year trend becomes meaningless.
 5. Days when VIIRS saw nothing in the whole country while MODIS did are treated as **outages** and filled from MODIS.
 6. **Test**: predict every 2013–2025 year from MODIS alone, without that year. The error sets the trust label.
 
-Data: NASA FIRMS (MODIS C6.1 MCD14ML, VIIRS S-NPP VNP14IMGTDL; last 7 days: VIIRS NOAA-20 NRT) and NASA POWER daily weather.
+Data: NASA FIRMS (MODIS C6.1 MCD14ML, VIIRS S-NPP VNP14IMGTDL; last 7 days: VIIRS NOAA-20 NRT, compared with an S-NPP normal: same instrument design, not cross-calibrated) and NASA POWER daily weather.
 **Use of AI.** The code of this app was written with an AI coding assistant (Claude Code, Anthropic), directed and checked by the team. No images, audio or data were AI-generated: all numbers come from NASA data.
 """,
     "es": """
@@ -83,7 +84,7 @@ simple salta en 2012 y cualquier tendencia de 25 años pierde sentido.
 5. Los días en que VIIRS no vio nada en todo el país pero MODIS sí se tratan como **cortes** y se completan con MODIS.
 6. **Prueba**: predecimos cada año 2013–2025 solo con MODIS, sin usar ese año. El error define la etiqueta de confianza.
 
-Datos: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; últimos 7 días: VIIRS NOAA-20 NRT) y clima diario NASA POWER.
+Datos: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; últimos 7 días: VIIRS NOAA-20 NRT, comparado con una normal de S-NPP: mismo diseño de instrumento, sin calibración cruzada) y clima diario NASA POWER.
 **Uso de IA.** El código de esta aplicación se escribió con un asistente de programación con IA (Claude Code, Anthropic), dirigido y revisado por el equipo. No se generaron con IA imágenes, audio ni datos: todas las cifras provienen de datos de la NASA.
 """,
     "ru": """
@@ -98,7 +99,7 @@ Datos: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; últimos 7 días: VIIRS NOAA-20 NRT)
 5. Дни, когда VIIRS ничего не увидел во всей стране, а MODIS увидел, считаются **сбоями** и заполняются из MODIS.
 6. **Проверка**: каждый год 2013–2025 предсказываем только по MODIS, не используя этот год. Ошибка задаёт уровень доверия.
 
-Данные: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; последние 7 дней: VIIRS NOAA-20 NRT) и суточная погода NASA POWER.
+Данные: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; последние 7 дней: VIIRS NOAA-20 NRT в сравнении с нормой по S-NPP: прибор того же устройства, без взаимной калибровки) и суточная погода NASA POWER.
 **Использование ИИ.** Код приложения написан с помощью ИИ-ассистента для программирования (Claude Code, Anthropic) под руководством и с проверкой команды. Изображения, звук и данные ИИ не генерировал: все цифры взяты из данных NASA.
 """,
 }
@@ -129,12 +130,21 @@ with st.sidebar:
     scale = SCALES[scale_name]
     st.markdown(U.section("+", T("Add a country")), unsafe_allow_html=True)
     LOGS = Path(__file__).parent / "data" / "logs"
-    with st.form("add_country", border=False):
-        want = st.text_input(T("Country name as in NASA FIRMS"), placeholder="e.g. Brazil, United States, Mongolia")
-        go_ = st.form_submit_button(T("Download 2000–2025"))
+    HOSTED = Path("/mount/src").exists()  # Streamlit Community Cloud: ~1 GB RAM, temporary disk
+    if HOSTED:
+        st.markdown('<div class="wc-note">' + T("The online demo ships Kazakhstan and Argentina. To add any other "
+                    "country, run the app locally: python fetch.py Brazil --build") + '</div>', unsafe_allow_html=True)
+    with st.form("add_country", border=False) if not HOSTED else st.empty():
+        if not HOSTED:
+            want = st.text_input(T("Country name as in NASA FIRMS"), placeholder="e.g. Brazil, United States, Mongolia")
+            go_ = st.form_submit_button(T("Download 2000–2025"))
+        else:
+            want, go_ = "", False
     if go_ and want.strip():
         cname = "_".join(w[:1].upper() + w[1:] for w in want.strip().replace("_", " ").split())
-        if cname in countries:
+        if not re.fullmatch(r"[A-Z][A-Za-z_'-]{1,60}", cname):
+            st.error(T("Use letters only, e.g. United States."))
+        elif cname in countries:
             st.info(f"{cname} is already loaded.")
         elif not fetch.exists(cname):
             st.error(f"FIRMS has no archive called “{cname}”. Use the English name, e.g. United_States.")
@@ -220,10 +230,10 @@ def analyse(country, bbox, ring, measure):
 
 @st.cache_data(show_spinner=False, max_entries=32)
 def last_week(bbox, ring, measure, stamp):
-    d, when = nrt.last7(bbox)
+    d, when, end = nrt.last7(bbox)
     if ring and len(d):
         d = d[data.inside(d.lon.to_numpy(), d.lat.to_numpy(), list(ring))]
-    return d.reset_index(drop=True), when
+    return d.reset_index(drop=True), when, end
 
 
 @st.cache_data(show_spinner="Getting NASA POWER weather…", max_entries=16)
@@ -231,9 +241,8 @@ def get_weather(lat, lon):
     return C.weather(lat, lon)
 
 
-def recent_vs_normal(d7, act, measure):
+def recent_vs_normal(d7, act, measure, end):
     """Activity in the last 7 days (NOAA-20 VIIRS) against the same calendar days in 2013–2025 (S-NPP VIIRS)."""
-    end = pd.Timestamp.today().normalize() - pd.Timedelta(days=1)
     days = pd.date_range(end - pd.Timedelta(days=6), end)
     x = d7.assign(sensor="VIIRS", sat="N", good=True, type=0)
     now = H.daily(x, days[0], days[-1], measure).viirs.sum() if len(x) else 0.0
@@ -260,12 +269,12 @@ if name:
         res = None
         st.warning(T("No fire detections in this area. Try a larger one."))
 
-d7, d7_when = (None, None)
+d7, d7_when, d7_end = (None, None, None)
 if res is not None:
     try:
         stamp = nrt.stamp(tuple(bbox))
         if stamp is not None:
-            d7, d7_when = last_week(tuple(bbox), tuple(map(tuple, ring)) if ring else None, measure, stamp)
+            d7, d7_when, d7_end = last_week(tuple(bbox), tuple(map(tuple, ring)) if ring else None, measure, stamp)
     except Exception:  # NRT is a bonus: never break the page over it
         d7 = None
 
@@ -357,7 +366,7 @@ with right:
                           p=f"{abs(ch):.0f}"))
     st.markdown(f'<div class="wc-lede">{" ".join(lede)}</div>', unsafe_allow_html=True)
 
-    rv = recent_vs_normal(d7, act, measure) if d7 is not None else None
+    rv = recent_vs_normal(d7, act, measure, d7_end) if d7_end is not None else None
     if rv:
         rr = rv["now"] / rv["median"] if rv["median"] > 0 else np.nan
         val_txt = f"{rv['now']:,.0f}" + (f"  ·  {rr:.1f}×" if np.isfinite(rr) else "")
@@ -514,7 +523,8 @@ with tabs[2]:
                 "fire had burned, each year. Trend = Theil–Sen slope, significance = Kendall test. Fire weather: "
                 "daily hot-dry-windy index (vapour-pressure deficit × wind, NASA POWER) compared with its normal for the "
                 "date; the next 3 days’ fire is compared with the same dates in other years. Coloured dot = the 90% range "
-                "excludes 1 (no effect).") + '</div>', unsafe_allow_html=True)
+                "excludes 1 (no effect).") + ' ' + T("Many seasons and dates are tested at once, so treat a single "
+                "p < 0.05 as a lead to check, not as proof.") + '</div>', unsafe_allow_html=True)
     if wx is not None:
         st.markdown(U.section("↗", T("Fire weather of the last 60 days")), unsafe_allow_html=True)
         rd = C.recent_days(wx)
@@ -534,7 +544,8 @@ with tabs[3]:
                                     T("share of yearly fire"): f"{x['share']:.0f}%"} for x in seas]),
                      hide_index=True)
     st.markdown(U.section("B", T("Documented fires — does the satellite record see them?")), unsafe_allow_html=True)
-    ev = [x for x in EVENTS if x[3] == country and bbox[0] <= x[2] <= bbox[2] and bbox[1] <= x[1] <= bbox[3]]
+    ev = [x for x in EVENTS if x[3] == country and bbox[0] <= x[2] <= bbox[2] and bbox[1] <= x[1] <= bbox[3]
+          and (not ring or data.inside(np.array([x[2]]), np.array([x[1]]), list(ring))[0])]
     if ev:
         v = df[(df.sensor == "VIIRS") & df.good]
         rows = []

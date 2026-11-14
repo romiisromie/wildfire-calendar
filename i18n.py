@@ -41,6 +41,11 @@ TR: dict[str, tuple[str, str]] = {  # english: (spanish, russian)
     "Add a country": ("Añadir país", "Добавить страну"),
     "Country name as in NASA FIRMS": ("Nombre del país en NASA FIRMS", "Название страны как в NASA FIRMS"),
     "Download 2000–2025": ("Descargar 2000–2025", "Скачать 2000–2025"),
+    "The online demo ships Kazakhstan and Argentina. To add any other country, run the app locally: python fetch.py Brazil --build": (
+        "La demo en línea incluye Kazajistán y Argentina. Para añadir otro país, ejecuta la app localmente: python fetch.py Brazil --build",
+        "Онлайн-демо содержит Казахстан и Аргентину. Чтобы добавить другую страну, запустите приложение локально: python fetch.py Brazil --build"),
+    "Use letters only, e.g. United States.": ("Usa solo letras, p. ej. United States.",
+                                              "Только латинские буквы, например United States."),
     "Active 0.1° cells": ("Celdas activas de 0,1°", "Активные ячейки 0,1°"),
     "Hotspot detections": ("Detecciones de focos", "Точки огня"),
     "Fire radiative power (MW)": ("Potencia radiativa (MW)", "Мощность огня (МВт)"),
@@ -141,6 +146,9 @@ TR: dict[str, tuple[str, str]] = {  # english: (spanish, russian)
     "Season timing: the day by which 10% (start), 50% and 90% (end) of a season’s fire had burned, each year. Trend = Theil–Sen slope, significance = Kendall test. Fire weather: daily hot-dry-windy index (vapour-pressure deficit × wind, NASA POWER) compared with its normal for the date; the next 3 days’ fire is compared with the same dates in other years. Coloured dot = the 90% range excludes 1 (no effect).": (
         "Fechas de temporada: día en que ardió el 10% (inicio), 50% y 90% (fin) del fuego de la temporada, cada año. Tendencia = pendiente de Theil–Sen, significancia = prueba de Kendall. Clima de fuego: índice cálido-seco-ventoso (déficit de presión de vapor × viento, NASA POWER) frente a su normal para la fecha; el fuego de los 3 días siguientes se compara con las mismas fechas de otros años. Punto de color = el rango 90% excluye 1 (sin efecto).",
         "Сроки сезона: день, к которому сгорело 10% (начало), 50% и 90% (конец) огня сезона, по годам. Тренд — наклон Тейла–Сена, значимость — тест Кендалла. Пожарная погода: индекс «жарко-сухо-ветрено» (дефицит упругости пара × ветер, NASA POWER) относительно нормы для даты; огонь следующих 3 дней сравнивается с теми же датами других лет. Цветная точка = 90% диапазон не включает 1 (нет эффекта)."),
+    "Many seasons and dates are tested at once, so treat a single p < 0.05 as a lead to check, not as proof.": (
+        "Se prueban muchas temporadas y fechas a la vez: un p < 0,05 aislado es una pista para verificar, no una prueba.",
+        "Проверяется сразу много сезонов и дат, поэтому одиночное p < 0,05 — повод проверить, а не доказательство."),
     "Fire weather of the last 60 days": ("Clima de fuego de los últimos 60 días", "Пожарная погода за 60 дней"),
     "vs normal": ("vs normal", "к норме"),
     "hot-dry-windy": ("cálido-seco-ventoso", "жарко-сухо-ветрено"), "normal": ("normal", "норма"),

@@ -6,6 +6,7 @@ Files land in data/raw/. Interrupted downloads resume; finished ones are skipped
 """
 from __future__ import annotations
 
+import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -66,6 +67,8 @@ def exists(country: str) -> bool:
 
 
 def main(country: str, build: bool = False) -> None:
+    if not re.fullmatch(r"[A-Z][A-Za-z_'-]{1,60}", country):
+        raise SystemExit(f"not a FIRMS country name: {country!r} (letters and _ only, e.g. United_States)")
     RAW.mkdir(parents=True, exist_ok=True)
     todo = list(jobs(country))
     with ThreadPoolExecutor(6) as pool:

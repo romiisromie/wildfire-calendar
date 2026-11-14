@@ -12,7 +12,7 @@ Draw any area and get one 25-year fire record (2000–2025) built from two NASA 
 - **CSV download** of the calendar, the daily series and the raw hotspots.
 - **Last 7 days**: today's fires (VIIRS on NOAA-20, near-real-time, no key) against the normal for these dates.
 - **Climate & season shift**: is the fire season starting earlier (Theil–Sen trend, cross-checked on MODIS alone), and how much more fire follows hot-dry-windy days (NASA POWER weather).
-- **Any country**: type a FIRMS country name in the sidebar and the app downloads and builds its 2000–2025 record.
+- **Any country** (open-source version): type a FIRMS country name in the sidebar and the app downloads and builds its 2000–2025 record. The online demo ships Kazakhstan and Argentina.
 - **English / Español / Русский** interface (`?lang=ES`).
 
 ## Run
