@@ -102,6 +102,25 @@ def anomalies(wk: pd.DataFrame, clim_by_year) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("activity", ascending=False) if rows else pd.DataFrame()
 
 
+def same_window(act: pd.Series, start, end) -> pd.Series:
+    """Activity over the calendar window start..end, repeated for every year it is fully observed.
+
+    Indexed by the year the window starts in, so a Dec–Jan window stays one period.
+    """
+    start, end = pd.Timestamp(start), pd.Timestamp(end)
+    span = (end - start).days
+    out = {}
+    for y in range(act.index.min().year, act.index.max().year + 1):
+        try:
+            a = start.replace(year=y)
+        except ValueError:  # 29 Feb in a non-leap year
+            a = start.replace(year=y, day=28)
+        b = a + pd.Timedelta(days=span)
+        if a >= act.index.min() and b <= act.index.max():
+            out[y] = float(act.loc[a:b].sum())
+    return pd.Series(out, name="activity")
+
+
 def yearly(act: pd.Series) -> pd.DataFrame:
     s = act.groupby(act.index.year).agg(["sum", "count"])
     s = s[s["count"] >= 330]

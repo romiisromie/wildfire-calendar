@@ -4,3 +4,4 @@ __pycache__/
 data/nrt/
 data/weather/
 data/logs/
+.streamlit/secrets.toml

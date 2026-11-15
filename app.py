@@ -58,6 +58,8 @@ TRUST = {"High": ("#7fb069", "solid"), "Medium": (U.FLAME, "careful"), "Low": (U
          "Insufficient": (U.MUTED, "too little fire to test")}
 METHOD = {
     "en": """
+**Why now.** MODIS on Terra and Aqua is near the end of its life. Its 25-year fire record continues only through VIIRS, and only if the two are put on one scale.
+
 **The problem.** MODIS (since 2000, 1 km pixels) and VIIRS (since 2012, 375 m) see fire differently. A plain count
 jumps up in 2012, and any 25-year trend becomes meaningless.
 
@@ -73,6 +75,8 @@ Data: NASA FIRMS (MODIS C6.1 MCD14ML, VIIRS S-NPP VNP14IMGTDL; last 7 days: VIIR
 **Use of AI.** The code of this app was written with an AI coding assistant (Claude Code, Anthropic), directed and checked by the team. No images, audio or data were AI-generated: all numbers come from NASA data.
 """,
     "es": """
+**Por qué ahora.** MODIS en Terra y Aqua llega al final de su vida útil. Su registro de 25 años solo continúa con VIIRS, y solo si ambos están en la misma escala.
+
 **El problema.** MODIS (desde 2000, píxeles de 1 km) y VIIRS (desde 2012, 375 m) ven el fuego de forma distinta. Un conteo
 simple salta en 2012 y cualquier tendencia de 25 años pierde sentido.
 
@@ -88,6 +92,8 @@ Datos: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; últimos 7 días: VIIRS NOAA-20 NRT,
 **Uso de IA.** El código de esta aplicación se escribió con un asistente de programación con IA (Claude Code, Anthropic), dirigido y revisado por el equipo. No se generaron con IA imágenes, audio ni datos: todas las cifras provienen de datos de la NASA.
 """,
     "ru": """
+**Почему сейчас.** MODIS на Terra и Aqua доживает срок службы. Его 25-летний ряд пожаров продолжится только через VIIRS — и только если привести их к одной шкале.
+
 **Проблема.** MODIS (с 2000 года, пиксель 1 км) и VIIRS (с 2012 года, 375 м) видят огонь по-разному. Простой подсчёт
 подскакивает в 2012 году, и любой 25-летний тренд теряет смысл.
 
@@ -103,6 +109,8 @@ Datos: NASA FIRMS (MODIS C6.1, VIIRS S-NPP; últimos 7 días: VIIRS NOAA-20 NRT,
 **Использование ИИ.** Код приложения написан с помощью ИИ-ассистента для программирования (Claude Code, Anthropic) под руководством и с проверкой команды. Изображения, звук и данные ИИ не генерировал: все цифры взяты из данных NASA.
 """,
 }
+CHART_CFG = {"displaylogo": False, "modeBarButtons": [["toImage"]],
+             "toImageButtonOptions": {"format": "png", "scale": 2, "filename": "wildfire-calendar"}}
 SCALES = {"Burn (dark → bright)": U.BURN, "Cividis": "cividis"}
 
 countries = data.countries()
@@ -397,7 +405,7 @@ with right:
                 unsafe_allow_html=True)
 
 tabs = st.tabs([T(x) for x in ["Calendar", "This year", "Climate & shift", "Seasons & events", "Harmonization",
-                                "Download", "Method"]])
+                                "Compare & download", "Method"]])
 
 # ---------------- calendar ----------------
 with tabs[0]:
@@ -428,7 +436,7 @@ with tabs[0]:
     fig.update_layout(height=max(380, 24 * len(t) + 60), margin=dict(t=30, l=10, r=10, b=10),
                       yaxis=dict(autorange="reversed", dtick=1, title=None, showgrid=False),
                       xaxis=dict(side="top", title=None, showgrid=False))
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(fig, width="stretch", config=CHART_CFG)
     st.markdown('<div class="wc-note">' + T("Brighter = more fire (log scale). Before 2012 values are MODIS converted to "
                 "VIIRS units; empty cells were not fully observed.") + '</div>', unsafe_allow_html=True)
 
@@ -450,7 +458,7 @@ with tabs[1]:
     fig.update_layout(height=420, margin=dict(t=10, b=10), bargap=0.15, yaxis_title=T("{u} per week", u=unit),
                       xaxis=dict(tickmode="array", tickvals=xl[::4], tickangle=0),
                       legend=dict(orientation="h", y=1.06, x=0))
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(fig, width="stretch", config=CHART_CFG)
     st.markdown(f'<div class="wc-note"><span style="color:{U.EMBER}">■</span> {T("above the usual range")} · '
                 f'<span style="color:#8a5a3c">■</span> {T("within")} · <span style="color:{U.COOL}">■</span> '
                 f'{T("below")}. ' + T("“Usual” = complete years 2000–{y}.", y=y - 1) + '</div>', unsafe_allow_html=True)
@@ -491,7 +499,7 @@ with tabs[2]:
             fig.update_layout(height=300, margin=dict(t=10, b=10), legend=dict(orientation="h", y=1.1, x=0),
                               yaxis=dict(tickvals=ticks, ticktext=[L(C.doy_label(rep["window_start"], v)) for v in ticks],
                                          autorange="reversed", title=None))
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig, width="stretch", config=CHART_CFG)
         with g2:
             for q, lab in (("onset", T("Season starts")), ("end", T("Season ends"))):
                 tr = rep[q]
@@ -532,13 +540,13 @@ with tabs[2]:
         fig = go.Figure(go.Bar(x=rd.index, y=rd.anom, marker_color=rd.cls.map(cmap), marker_line_width=0,
                                customdata=rd.cls.map(T), hovertemplate="%{x|%d %b}: %{customdata}<extra></extra>"))
         fig.update_layout(height=200, margin=dict(t=10, b=10), yaxis_title=T("vs normal"), bargap=0.1)
-        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config=CHART_CFG)
         st.markdown('<div class="wc-note">' + T("NASA POWER weather at the area centre, up to {d}.",
                     d=L(f"{wx.index.max():%d %b %Y}")) + '</div>', unsafe_allow_html=True)
 
 # ---------------- seasons & events ----------------
 with tabs[3]:
-    st.markdown(U.section("A", T("Fire seasons")), unsafe_allow_html=True)
+    st.markdown(U.section("A", T("Critical periods (fire seasons)")), unsafe_allow_html=True)
     if seas:
         st.dataframe(pd.DataFrame([{T("season"): L(S.season_label(x)), T("peak week"): L(S.week_label(x["peak"])),
                                     T("share of yearly fire"): f"{x['share']:.0f}%"} for x in seas]),
@@ -580,7 +588,7 @@ with tabs[4]:
                            hoverinfo="skip"))
     fig.update_layout(height=170, margin=dict(t=0, b=0, l=0, r=40), xaxis=dict(title=T("held-out monthly error, %"),
                       range=[0, max(100, errs.error.max() * 1.15)]), yaxis=dict(title=None))
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(fig, width="stretch", config=CHART_CFG)
     st.markdown('<div class="wc-note">' + T("For each year 2013–2025 the factor is learned from the other years only, "
                 "then that year’s monthly VIIRS totals are predicted from MODIS. "
                 "Error = Σ|predicted − actual| / Σ actual.") + '</div>', unsafe_allow_html=True)
@@ -590,7 +598,7 @@ with tabs[4]:
     fig.add_hline(y=fit.k_global, line=dict(color=U.INK, dash="dot", width=1),
                   annotation_text=T("all-year ×{k}", k=f"{fit.k_global:.2f}"), annotation_font_color=U.MUTED)
     fig.update_layout(height=260, margin=dict(t=10, b=10))
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(fig, width="stretch", config=CHART_CFG)
     st.markdown(U.section("3", T("Overlap years: VIIRS vs converted MODIS")), unsafe_allow_html=True)
     o = dly[dly.index.year >= 2013].copy()
     o["conv"] = o.modis * fit.k.reindex(o.index.month).to_numpy()
@@ -602,10 +610,50 @@ with tabs[4]:
                                                                                          dash="dot")))
     fig.update_layout(height=320, margin=dict(t=10, b=10), yaxis_title=T("{u} per month", u=unit),
                       legend=dict(orientation="h", y=1.08, x=0))
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(fig, width="stretch", config=CHART_CFG)
 
-# ---------------- download ----------------
+# ---------------- compare a period & download ----------------
 with tabs[5]:
+    st.markdown(U.section("1", T("Pick a period: how does it compare with every other year?")), unsafe_allow_html=True)
+    first, last = act.index.min().date(), act.index.max().date()
+    wk7 = act.rolling(7).sum()
+    peak_end = wk7.loc[str(last_year - 5):].idxmax()  # default: the strongest week of the last five years
+    default = (max(first, (peak_end - pd.Timedelta(days=6)).date()), peak_end.date())
+    per = st.date_input(T("Period"), value=default, min_value=first, max_value=last, format="YYYY-MM-DD",
+                        key=f"period_{country}_{name}")
+    if isinstance(per, (tuple, list)) and len(per) == 2 and (per[1] - per[0]).days <= 365:
+        p0, p1 = pd.Timestamp(per[0]), pd.Timestamp(per[1])
+        sw = S.same_window(act, p0, p1)
+        here = float(act.loc[p0:p1].sum())
+        others = sw.drop(index=p0.year, errors="ignore")
+        med = float(others.median()) if len(others) else np.nan
+        rank = int(1 + (others > here).sum())
+        c1, c2, c3 = st.columns(3)
+        c1.markdown(U.readout(T("Selected period"), f"{here:,.0f}", unit + f" · {p0:%Y-%m-%d} → {p1:%Y-%m-%d}"),
+                    unsafe_allow_html=True)
+        c2.markdown(U.readout(T("Same dates, median year"), f"{med:,.0f}" if np.isfinite(med) else "—",
+                              T("{x}× the median", x=f"{here / med:.1f}") if med > 0 else ""),
+                    unsafe_allow_html=True)
+        c3.markdown(U.readout(T("Rank among {n} years", n=len(others) + 1), f"#{rank}",
+                              T("1 = most fire on these dates since 2000")), unsafe_allow_html=True)
+        cols = [U.EMBER if y == p0.year else ("#8a5a3c" if y < 2012 else "#b07a52") for y in sw.index]
+        fig = go.Figure(go.Bar(x=sw.index, y=sw.values, marker_color=cols, marker_line_width=0,
+                               hovertemplate="%{x}: %{y:,.0f}<extra></extra>"))
+        if np.isfinite(med):
+            fig.add_hline(y=med, line=dict(color=U.INK, dash="dot", width=1),
+                          annotation_text=T("median"), annotation_font_color=U.MUTED)
+        fig.update_layout(height=300, margin=dict(t=10, b=10), yaxis_title=unit, xaxis=dict(dtick=2),
+                          bargap=0.2)
+        st.plotly_chart(fig, width="stretch", config=CHART_CFG)
+        st.markdown('<div class="wc-note">' + T("Same calendar dates in every year of the record, on one harmonized "
+                    "scale: lighter bars before 2012 are MODIS converted to VIIRS units.") + '</div>',
+                    unsafe_allow_html=True)
+        sel = df[(df.date >= p0) & (df.date <= p1)]
+    else:
+        st.info(T("Choose a start and an end date, at most one year apart."))
+        p0, p1, sw, sel = None, None, None, df.iloc[0:0]
+
+    st.markdown(U.section("2", T("Download")), unsafe_allow_html=True)
     head = (f"# Wildfire Calendar export | area: {name} | country: {country} | "
             f"bbox: {tuple(round(b, 3) for b in bbox)}\n"
             f"# units: VIIRS-equivalent {unit} | sources: NASA FIRMS MODIS C6.1, VIIRS S-NPP 375m\n"
@@ -617,7 +665,7 @@ with tabs[5]:
         frame.to_csv(b)
         return b.getvalue().encode()
 
-    d1, d2, d3 = st.columns(3)
+    d1, d2, d3, d4 = st.columns(4)
     with d1:
         st.markdown(U.readout(T("Calendar"), T("year × month"), T("{n} rows", n=len(mon))), unsafe_allow_html=True)
         st.download_button(T("Download CSV"), csv(mon.rename(columns=dict(enumerate(S.MONTHS, 1)))),
@@ -627,9 +675,17 @@ with tabs[5]:
                     unsafe_allow_html=True)
         st.download_button(T("Download CSV"), csv(dly.assign(harmonized=act)), "daily_series.csv", "text/csv", key="d2")
     with d3:
-        st.markdown(U.readout(T("Hotspots"), T("every detection"), T("{n} rows", n=f"{len(df):,}")),
+        st.markdown(U.readout(T("Hotspots in the period"), f"{len(sel):,}", T("every detection, both sensors")),
                     unsafe_allow_html=True)
-        st.download_button(T("Download CSV"), csv(df), "hotspots.csv", "text/csv", key="d3")
+        st.download_button(T("Download CSV"), csv(sel), "hotspots_period.csv", "text/csv", key="d3",
+                           disabled=sel.empty)
+    with d4:
+        st.markdown(U.readout(T("Period vs other years"), T("one row per year"),
+                              T("{n} rows", n=0 if sw is None else len(sw))), unsafe_allow_html=True)
+        st.download_button(T("Download CSV"), csv(sw.to_frame() if sw is not None else pd.DataFrame()),
+                           "period_by_year.csv", "text/csv", key="d4", disabled=sw is None)
+    st.markdown('<div class="wc-note">' + T("Every chart has a camera button in its top-right corner to save it as a "
+                "PNG.") + '</div>', unsafe_allow_html=True)
 
 # ---------------- method ----------------
 with tabs[6]:
