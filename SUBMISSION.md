@@ -10,15 +10,13 @@ Wildfire Calendar
 
 ## High-Level Project Summary
 
-Wildfire Calendar turns two NASA fire sensors into one trustworthy 25-year fire record for any area on Earth. MODIS (since 2000, 1 km pixels) and VIIRS (since 2012, 375 m) see fire differently. VIIRS records 1.7–2.4× more, so a plain record jumps in 2012 and long-term trends become meaningless.
+MODIS, the longest satellite fire record (2000–), is reaching the end of its life. Its successor, VIIRS (2012–), sees about twice as much fire, so the two records cannot simply be joined. When we joined them naively, the trend pointed the wrong way in 3 of our 6 test areas. In Corrientes, Argentina, fire appears to rise 81%, while the harmonized record, and MODIS alone, show it fell 19%.
 
-For any area a user draws, our web app:
+Wildfire Calendar is a web app that harmonizes NASA FIRMS MODIS and VIIRS hotspots into one consistent burning-activity calendar for any area a user draws:
 
-- learns a month-by-month VIIRS/MODIS conversion for that area;
-- rebuilds the record from 2000 to 2025 on one scale;
-- tests the conversion on years it never saw, and turns the error into a plain-language trust label (High / Medium / Low / Insufficient).
-
-People get a month × year fire calendar, this year against the normal range, the fires of the last 7 days, and whether the fire season is shifting. This matters to fire services, reserves and researchers who plan around fire seasons but cannot reconcile two sensors themselves.
+- It learns a month-by-month VIIRS/MODIS conversion for that area.
+- It tests the conversion on years it never saw and shows a plain-language trust label.
+- It lets emergency managers see the critical periods, compare this month or any fire with the same dates in every year since 2000, check the last 7 days, and download CSV data and PNG charts.
 
 ## Link to Project Demo
 
@@ -45,9 +43,9 @@ The app then shows:
 4. **Climate & shift**:
    - whether the fire season starts or ends earlier, using a Theil–Sen trend with a Kendall test, cross-checked on MODIS alone so the 2012 sensor change cannot create it;
    - how fire in the next 3 days differs after hot-dry-windy and after calm-humid days (NASA POWER weather), each with a 90% range over the seasons.
-5. **Seasons & events**: the main fire seasons, weeks far above normal, and a check against fires reported in the news.
-6. **Harmonization**: the held-out error, the factor for each month, and VIIRS vs converted MODIS in the overlap years.
-7. **Download**: CSV of the calendar, the daily series and the hotspots, with a header that records the method and its error.
+5. **Compare & download**: pick any date range (for example a fire in progress) and see it against the same dates in every year since 2000: its rank, the median year, and a bar chart. Download the hotspots of that period, the period-by-year table, the calendar and the daily series as CSV; every chart has a PNG button.
+6. **Seasons & events**: the main fire seasons, weeks far above normal, and a check against fires reported in the news.
+7. **Harmonization**: what naive joining would conclude vs the harmonized record and MODIS alone, the held-out error, the factor for each month, and VIIRS vs converted MODIS in the overlap years.
 
 The online demo ships Kazakhstan and Argentina. Any other country in the NASA FIRMS archive can be added in the open-source version (`python fetch.py Brazil --build`). The interface is in English, Spanish and Russian.
 
@@ -83,6 +81,17 @@ Six fires reported in the news each rank as the strongest week of 2013–2025 in
 | Arakaragai forest, Sep 2022 | 860 | 0 |
 | Las Golondrinas, Chubut, Mar 2021 | 500 | 0 |
 
+Why harmonization matters. Change in yearly fire from 2003–2010 to 2016–2025:
+
+| Area | Sensors joined as they are | Harmonized | Check: MODIS alone |
+|---|---|---|---|
+| Corrientes & Iberá | **+81%** | −19% | −18% |
+| Paraná Delta | **+13%** | −51% | −53% |
+| Córdoba hills | **+8%** | −50% | −50% |
+| Kostanay steppe | −40% | −66% | −66% |
+| Naurzum reserve | −62% | −78% | −77% |
+| Arakaragai forest | −54% | −76% | −77% |
+
 What the harmonized record shows:
 
 - **Decline.** Yearly fire in the Kostanay steppe is 66% lower in 2016–2025 than in the 2000s. Each sensor alone shows the same: Terra −65%, Aqua −67% (2003–2010 vs 2016–2025), and VIIRS −37% from 2013–15 to 2023–25. It is not a sensor artefact.
@@ -96,6 +105,8 @@ What the harmonized record shows:
 - Reserves get a reliable history of their own territory.
 - Scientists get one series with a stated error instead of two sensors to reconcile.
 - Every number comes with how far it can be trusted.
+
+**Why now.** MODIS on Terra and Aqua is near the end of its life. Without harmonization, its 25-year fire history cannot be continued with VIIRS.
 
 **What we hope to achieve.** We want a free tool that any fire service, reserve or researcher can open for their own area. As a next step, calibrating NOAA-20 and NOAA-21 against S-NPP would keep the record going as S-NPP ages.
 
