@@ -17,7 +17,7 @@ MEASURES = {"cells": "Active 0.1° cells", "count": "Hotspot detections", "frp":
 FIRST_FULL_OVERLAP = 2013  # VIIRS starts 20 Jan 2012
 
 
-def daily(df: pd.DataFrame, start, end, measure: str = "cells", gaps=()) -> pd.DataFrame:
+def daily(df: pd.DataFrame, start, end, measure: str = "cells", gaps=(), viirs_end=None) -> pd.DataFrame:
     """Daily activity per sensor. Columns: modis, terra (MODIS from Terra only), viirs (NaN on gap days)."""
     idx = pd.date_range(start, end, freq="D")
     d = df[df.good & (df.type == 0)]  # confident detections of vegetation fires (no volcanoes/industry)
@@ -39,6 +39,8 @@ def daily(df: pd.DataFrame, start, end, measure: str = "cells", gaps=()) -> pd.D
     out = pd.DataFrame({"modis": agg(m), "terra": agg(m[m.sat == "T"]), "viirs": agg(v)}, index=idx)
     first_v = pd.Timestamp("2012-01-20")
     out.loc[out.index < first_v, "viirs"] = np.nan
+    if viirs_end is not None:  # beyond the VIIRS archive (current year): MODIS x factor fills in
+        out.loc[out.index > pd.Timestamp(viirs_end), "viirs"] = np.nan
     out.loc[out.index.isin(pd.DatetimeIndex(gaps)), "viirs"] = np.nan
     return out
 

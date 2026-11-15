@@ -231,7 +231,7 @@ def load_area(country, bbox, ring):
 def analyse(country, bbox, ring, measure):
     df = load_area(country, bbox, ring)
     m = data.meta(country)
-    dly = H.daily(df, "2000-11-01", m["end"], measure, m["viirs_gaps"])
+    dly = H.daily(df, "2000-11-01", m["end"], measure, m["viirs_gaps"], m.get("viirs_end"))
     f = H.fit(dly)
     return df, dly, f, H.harmonized(dly, f), H.validate(dly)
 
@@ -372,6 +372,12 @@ with right:
             ch = 100 * (b / a - 1)
             lede.append(T("Since the 2000s, yearly fire is <em>{d} {p}%</em>.", d=T("down" if ch < 0 else "up"),
                           p=f"{abs(ch):.0f}"))
+            ys_ = dly.groupby(dly.index.year)[["modis", "viirs"]].sum(min_count=1)
+            if {2003, 2010, 2016, 2025} <= set(ys_.index) and ys_.modis.loc[2003:2010].mean() > 0:
+                nv = 100 * (ys_.viirs.loc[2016:2025].mean() / ys_.modis.loc[2003:2010].mean() - 1)
+                if np.sign(nv) != np.sign(ch):
+                    lede.append(T("Joining the two sensors as they are would show it <em>up {p}%</em> instead.",
+                                  p=f"{nv:.0f}"))
     st.markdown(f'<div class="wc-lede">{" ".join(lede)}</div>', unsafe_allow_html=True)
 
     rv = recent_vs_normal(d7, act, measure, d7_end) if d7_end is not None else None
@@ -580,6 +586,24 @@ with tabs[3]:
 
 # ---------------- harmonization ----------------
 with tabs[4]:
+    yrs = dly.groupby(dly.index.year)[["modis", "viirs"]].sum(min_count=1)
+    yh = act.groupby(act.index.year).sum()
+    if {2003, 2010, 2016, 2025} <= set(yrs.index):
+        early_m, late_v = yrs.modis.loc[2003:2010].mean(), yrs.viirs.loc[2016:2025].mean()
+        if early_m > 0:
+            naive = 100 * (late_v / early_m - 1)
+            harm = 100 * (yh.loc[2016:2025].mean() / yh.loc[2003:2010].mean() - 1)
+            modis_only = 100 * (yrs.modis.loc[2016:2025].mean() / early_m - 1)
+            st.markdown(U.section("0", T("Why harmonize: the trend from 2003–2010 to 2016–2025")), unsafe_allow_html=True)
+            n1, n2, n3 = st.columns(3)
+            flip = np.sign(naive) != np.sign(harm)
+            n1.markdown(U.readout(T("Sensors joined as they are"), f"{naive:+.0f}%",
+                                  T("MODIS before 2012, VIIRS after") + (" · " + T("wrong direction") if flip else ""),
+                                  dot=U.EMBER if flip else None), unsafe_allow_html=True)
+            n2.markdown(U.readout(T("Harmonized record"), f"{harm:+.0f}%", T("MODIS × monthly factor, then VIIRS")),
+                        unsafe_allow_html=True)
+            n3.markdown(U.readout(T("Check: MODIS alone, all 25 years"), f"{modis_only:+.0f}%",
+                                  T("one sensor, no switch")), unsafe_allow_html=True)
     st.markdown(U.section("1", T("How wrong is MODIS × factor on years it never saw?")), unsafe_allow_html=True)
     errs = pd.DataFrame({"method": [T("raw MODIS"), T("one factor"), T("monthly factor (used)")],
                          "error": [val["err_raw"], val["err_one_k"], val["err"]]})

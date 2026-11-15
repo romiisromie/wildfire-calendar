@@ -61,7 +61,7 @@ def build(country: str) -> Path:
     gaps = pd.DatetimeIndex(m[m >= 5].index).difference(pd.DatetimeIndex(v.unique())).sort_values()
     meta = {"country": country, "rows": len(df), "start": str(df.date.min().date()), "end": str(df.date.max().date()),
             "bbox": [float(df.lon.min()), float(df.lat.min()), float(df.lon.max()), float(df.lat.max())],
-            "viirs_gaps": [str(d.date()) for d in gaps]}
+            "viirs_gaps": [str(d.date()) for d in gaps], "viirs_end": str(v.max().date())}
     (STORE / f"{country}.json").write_text(json.dumps(meta))
     print(f"{country}: {len(df):,} detections, {len(keep):,} kept -> {out.name} ({out.stat().st_size / 1e6:.1f} MB), "
           f"VIIRS gap days: {len(gaps)}")
