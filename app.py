@@ -19,15 +19,22 @@ import streamlit as st
 from folium.plugins import Draw, HeatMap
 from streamlit_folium import st_folium
 
+import importlib
+
 import climate as C
 import data
 import fetch
 import harmonize as H
 import i18n
-from i18n import t as T
 import nrt
 import seasons as S
 import style as U
+
+# Streamlit Cloud re-runs app.py after a git push but can keep older copies of the helper modules in memory.
+# Reloading the pure-computation modules keeps them in step with this file (nrt keeps its download state).
+for _m in (data, H, S, C, i18n):
+    importlib.reload(_m)
+T = i18n.t
 
 st.set_page_config(page_title="Wildfire Calendar", page_icon="🔥", layout="wide", initial_sidebar_state="collapsed")
 st.markdown(U.CSS, unsafe_allow_html=True)
