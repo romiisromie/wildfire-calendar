@@ -13,6 +13,9 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    environment:
+      name: ghcr
+      url: https://github.com/romiisromie/wildfire-calendar/pkgs/container/wildfire-calendar
     steps:
       - name: Check out
         uses: actions/checkout@v4

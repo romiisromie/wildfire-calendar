@@ -3,7 +3,7 @@ FROM python:3.12-slim
 
 LABEL org.opencontainers.image.source="https://github.com/romiisromie/wildfire-calendar" \
       org.opencontainers.image.description="Harmonized 25-year MODIS + VIIRS wildfire calendar (NASA Space Apps 2026)" \
-      org.opencontainers.image.licenses="NOASSERTION"
+      org.opencontainers.image.licenses="MIT"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

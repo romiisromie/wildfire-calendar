@@ -1,5 +1,12 @@
 # Wildfire Calendar — NASA Space Apps 2026
 
+[![Live demo](https://img.shields.io/badge/demo-wildfire--calendar.streamlit.app-FF4B4B?logo=streamlit&logoColor=white)](https://wildfire-calendar.streamlit.app)
+[![Release](https://img.shields.io/github/v/release/romiisromie/wildfire-calendar)](https://github.com/romiisromie/wildfire-calendar/releases/latest)
+[![Docker image](https://img.shields.io/badge/ghcr.io-wildfire--calendar-2496ED?logo=docker&logoColor=white)](https://github.com/romiisromie/wildfire-calendar/pkgs/container/wildfire-calendar)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+**Live demo:** https://wildfire-calendar.streamlit.app
+
 Challenge: **Harmonization of MODIS and VIIRS Hot Spots**.
 Built during the hackathon, 14–15 November 2026 (see the git history).
 
@@ -24,6 +31,16 @@ python data.py Kazakhstan      # -> data/store/Kazakhstan.parquet
 streamlit run app.py
 ```
 
+### Docker
+
+A ready image is published to GitHub Container Registry on every push to `main` and every `v*` tag:
+
+```bash
+docker run --rm -p 8501:8501 ghcr.io/romiisromie/wildfire-calendar:latest
+```
+
+Then open http://localhost:8501. Use a version tag (for example `:1.1.0`) to pin a release.
+
 ## Method
 
 1. **Detections kept**: MODIS confidence ≥ 30 and VIIRS nominal or high; vegetation fires only (type 0).
@@ -43,3 +60,7 @@ Kazakhstan and Argentina are included in `data/store/` so the app runs without d
 ## Use of AI
 
 The code was written with an AI coding assistant (Claude Code, Anthropic) directed by the team.
+
+## License
+
+Code: [MIT](LICENSE) © 2026 Ramina Ibraimova. NASA FIRMS and NASA POWER data are provided by NASA under their own open-data terms.
